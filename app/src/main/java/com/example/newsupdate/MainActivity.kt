@@ -21,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Dispatcher
+import java.net.SocketTimeoutException
 import kotlin.reflect.jvm.internal.impl.renderer.ClassifierNamePolicy.SHORT
 
 @AndroidEntryPoint
@@ -54,32 +55,52 @@ class MainActivity : AppCompatActivity() {
     private fun fetchandUpdateNews() {
         progressBar.visibility = View.VISIBLE
         CoroutineScope(Dispatchers.IO).launch {
-            val response = newsViewModel.getNewsHeadline(AppConstants.COUNTRY)
 
-            withContext(Dispatchers.Main) {
-                if (response.isSuccessful) {
-                    progressBar.visibility = View.INVISIBLE
-                    val newsList: List<Article>? = response.body()?.articles
-                    if (newsList.isNullOrEmpty()) {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "No news available, Check back later",
-                            Toast.LENGTH_SHORT
-                        ).show()
+            try {
+                val response = newsViewModel.getNewsHeadline(AppConstants.COUNTRY)
+
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        progressBar.visibility = View.INVISIBLE
+                        val newsList: List<Article>? = response.body()?.articles
+                        if (newsList.isNullOrEmpty()) {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "No news available, Check back later",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            newsAdapter = NewsAdapter(newsList)
+                            recyclerView.adapter = newsAdapter
+                        }
+
                     } else {
-                        newsAdapter = NewsAdapter(newsList)
+                        progressBar.visibility = View.INVISIBLE
+                        val list = listOf(Article("", "", "",
+                            "Error fetching news, please check your network",
+                            null, null, null, null))
+                        newsAdapter = NewsAdapter(list)
                         recyclerView.adapter = newsAdapter
                     }
-
-                } else {
-                    progressBar.visibility = View.INVISIBLE
-                    Toast.makeText(
-                        this@MainActivity,
-                        response.errorBody().toString(),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                }
+            } catch (e: SocketTimeoutException) {
+                withContext(Dispatchers.Main) {
+                    emptyNewsList("Connection timeout, please try again")
+                }
+            } catch (e : Exception) {
+                withContext(Dispatchers.Main) {
+                    emptyNewsList("An error occurred: ${e.message}")
                 }
             }
+
         }
+    }
+
+    fun emptyNewsList(message : String) {
+        progressBar.visibility = View.INVISIBLE
+        val list = listOf(Article(null, message, null,
+            null,null, null, null, null))
+        newsAdapter = NewsAdapter(list)
+        recyclerView.adapter = newsAdapter
     }
 }

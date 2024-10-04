@@ -33,8 +33,11 @@ class NewsAdapter(private val articlesList : List<Article>) : RecyclerView.Adapt
         val newsItem = articlesList[position]
         holder.title.text = newsItem.title
         holder.content.text = newsItem.content
-        holder.author.text = "Author(s): ${newsItem.author}"
-        holder.source.text = "Source: ${newsItem.source?.name?: ""}"
+        if (!newsItem.author.isNullOrEmpty())
+            holder.author.text = "Author(s): ${newsItem.author}"
+
+        if (!(newsItem.source?.name.isNullOrEmpty()))
+            holder.source.text = "Source: ${newsItem.source?.name?: ""}"
 
         // Load the image using Picasso
         Picasso.get()
